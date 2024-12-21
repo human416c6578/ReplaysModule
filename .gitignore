@@ -1,0 +1,6 @@
+vendor
+obj
+obj-linux
+build
+bin
+.vscode

@@ -1,0 +1,190 @@
+import os
+
+#
+# Detect Metamod and HLSDK
+#
+
+def detectMetamod():
+  metamod_path = builder.options.metamod_path
+  if not len(metamod_path):
+    metamod_path = os.getenv('METAMOD', '')
+
+  if len(metamod_path):
+    metamod_path = os.path.join(builder.originalCwd, metamod_path)
+    if not os.path.exists(os.path.join(metamod_path, 'metamod')):
+      raise Exception('Metamod path does not exist: {0}'.format(metamod_path))
+  else:
+    try_paths = [
+      os.path.join(builder.sourcePath, '..', 'vendor'),
+      os.path.join(builder.sourcePath, '..', 'metamod-am'),
+      os.path.join(builder.sourcePath, '..', 'metamod-hl1'),
+    ]
+    for try_path in try_paths:
+      if os.path.exists(os.path.join(try_path, 'metamod')):
+        metamod_path = os.path.normpath(try_path)
+        break
+    if not metamod_path:
+      raise Exception('Could not find the source code to Metamod! Try passing --metamod to configure.py.')
+
+  return metamod_path
+
+def detectHlsdk():
+  hlsdk_path = builder.options.hlsdk_path
+  if not len(hlsdk_path):
+    hlsdk_path = os.getenv('HLSDK', '')
+
+  if len(hlsdk_path):
+    hlsdk_path = os.path.join(builder.originalCwd, hlsdk_path)
+    if not os.path.exists(hlsdk_path):
+      raise Exception('Metamod path does not exist: {0}'.format(hlsdk_path))
+  else:
+    try_paths = [
+      os.path.join(builder.sourcePath, '..', 'vendor/hlsdk'),
+    ]
+    for try_path in try_paths:
+      if os.path.exists(try_path):
+        hlsdk_path = os.path.normpath(try_path)
+        break
+    if not hlsdk_path:
+      raise Exception('Could not find the HLSDK! Try passing --hlsdk to configure.py.')
+
+  return hlsdk_path
+
+def detectAmxx():
+  amxx_path = builder.options.amxx_path
+  if not len(amxx_path):
+    amxx_path = os.getenv('AMXX', '')
+
+  if len(amxx_path):
+    amxx_path = os.path.join(builder.originalCwd, amxx_path)
+    if not os.path.exists(amxx_path):
+      raise Exception('Metamod path does not exist: {0}'.format(amxx_path))
+  else:
+    try_paths = [
+      os.path.join(builder.sourcePath, '..', 'vendor/amxmodx'),
+    ]
+    for try_path in try_paths:
+      if os.path.exists(try_path):
+        amxx_path = os.path.normpath(try_path)
+        break
+    if not amxx_path:
+      raise Exception('Could not find the AMXX! Try passing --amxx to configure.py.')
+
+  return amxx_path
+
+
+metamod_path = detectMetamod()
+hlsdk_path = detectHlsdk()
+amxx_path = detectAmxx()
+
+#
+# Compiler settings
+#
+cxx = builder.DetectCompilers()
+
+cxx.defines += [
+    'HAVE_STDINT_H'
+  ]
+
+if cxx.like('gcc'):
+  cxx.cflags += [
+    '-Wall',
+    #'-Werror',
+    '-Wno-error=unused-result',
+    '-Wno-error=unused-variable',
+    '-Wno-unused-value',
+    '-fno-strict-aliasing',
+    '-fPIC',
+    '-m32'
+  ]
+
+  cxx.cxxflags += [
+    '-std=c++17',
+    '-fexceptions',
+    '-fno-rtti',
+    '-m32'
+  ]
+
+  cxx.linkflags += [
+    '-L/usr/lib/gcc/i686-linux-gnu/9',  # Only 32-bit libgcc
+    '-L/usr/lib/i386-linux-gnu',         # Only 32-bit libstdc++
+    '-static-libstdc++',
+    '-m32'                              # Force 32-bit architecture
+  ]
+
+
+
+  if builder.options.opt == '1':
+    cxx.cflags += ['-O2']
+
+elif cxx.like('msvc'):
+  cxx.cflags += [
+    '/W3'
+  ]
+
+  cxx.cxxflags += [
+    '/EHsc'
+  ]
+
+  cxx.linkflags += [
+    '/MACHINE:X86',
+    '/SUBSYSTEM:WINDOWS',
+
+    'kernel32.lib'
+  ]
+
+  if builder.options.opt == '1':
+    cxx.cflags += ['/Ox']
+    cxx.linkflags += ['/OPT:ICF', '/OPT:REF']
+
+  if builder.options.debug == '1':
+    cxx.cflags += ['/MTd', '/Od', '/RTC1']
+    cxx.linkflags += ['/NODEFAULTLIB:libcmt']
+  else:
+    cxx.cflags += ['/MT']
+
+
+
+# Optimization
+if builder.options.opt == '1':
+  cxx.defines += ['NDEBUG']
+
+# Debugging
+if builder.options.debug == '1':
+  cxx.defines += ['DEBUG', '_DEBUG']
+
+
+cxx.includes += [
+  os.path.join(metamod_path, 'metamod'),
+  os.path.join(hlsdk_path, 'common'),
+  os.path.join(hlsdk_path, 'public'),
+  os.path.join(hlsdk_path, 'engine'),
+  os.path.join(hlsdk_path, 'dlls'),
+  os.path.join(hlsdk_path, 'game_shared'),
+  os.path.join(hlsdk_path, 'pm_shared'),
+
+  os.path.join(amxx_path, 'public'),
+
+  os.path.join(builder.sourcePath, 'include'),
+  os.path.join(builder.sourcePath, 'sdk'),
+]
+
+name = 'replays_amxx'
+if builder.target_platform == 'linux':
+  name += '_i386'
+
+binary = cxx.Library(name)
+binary.sources += [
+  'module.cpp',
+  'Frame.cpp',
+  'Replay.cpp',
+
+  'sdk/amxxmodule.cpp'
+]
+
+
+#
+# Run scripts, add binaries
+#
+
+builder.Add(binary)
