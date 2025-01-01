@@ -1,25 +1,20 @@
 #include "amxxmodule.h"  // Include the AMX Mod X headers
-#include "Replay.h"
 #include "pm_defs.h"
+#include "Replay.h"
+#include "Strafes.h"
 
 #include <chrono>
 #include <ctime>
 
 #define DEBUG 0
-
 #define REPLAY_FPS 60
 
 const int targetIntervalMs = 1000 / REPLAY_FPS;
 
-Replay g_Replays[33];
-bool g_bRecording[33];
+Replay g_Replays[MAX_PLAYERS];
+bool g_bRecording[MAX_PLAYERS];
 std::vector<Replay> g_BotReplays;
 size_t g_iCurrentReplay = 0;
-size_t g_iStrafes[33];
-size_t g_iSync[33];
-
-// TODO Header encoding/decoding or the way it's passed from pawn to module or viceverse is wrong
-// I believe I have to do the smoothing again, use the timestamp for each frame to calculate how much the frame should stay on the screen
 
 /*
 enum eHeader{
@@ -114,57 +109,6 @@ static cell AMX_NATIVE_CALL LoadReplay(AMX* amx, cell* params)
     return 1;
 }
 
-void CalculateStrafes(struct playermove_s *pMove, int player) {
-    static int old_buttons[33], old_onground[33];
-    static int strafes[33];
-    static int good_sync[33];
-    static int frames[33];
-    static vec3_t old_ang[33];
-    static int old_speed[33];
-    vec3_t ang = pMove->angles;
-    vec3_t vel = pMove->velocity;
-    int buttons = pMove->oldbuttons;
-    int speed = static_cast<int>(vel.x * vel.x + vel.y * vel.y);
-    int turning = false;
-
-    // In Air
-    if(!pMove->onground){
-        if(ang != old_ang[player])
-	    	turning = true;
-
-        if(turning) {
-            // Check for strafe transitions
-            if (((old_buttons[player] & IN_MOVELEFT) && (buttons & IN_MOVERIGHT)) || ((old_buttons[player] & IN_MOVERIGHT) && (buttons & IN_MOVELEFT))) {
-                strafes[player]++;
-            } else if (((old_buttons[player] & IN_BACK) && (buttons & IN_FORWARD)) || ((old_buttons[player] & IN_FORWARD) && (buttons & IN_BACK))) {
-                strafes[player]++;
-            }
-
-            if(speed > old_speed[player])
-		    	good_sync[player]++;
-    
-		    frames[player]++;
-        }
-    }
-
-    // Jumped
-    if(old_onground[player] && !pMove->onground) {
-        frames[player] = 0;
-        good_sync[player] = 0;
-        strafes[player] = 0;
-    }
-    // Landed
-    else if(!old_onground[player] && pMove->onground) {
-        g_iSync[player] = static_cast<int>(100.0 * good_sync[player] / frames[player]);
-        g_iStrafes[player] = strafes[player];
-    }
-
-    old_speed[player] = speed;
-    old_buttons[player] = buttons;
-    old_onground[player] = pMove->onground;
-    old_ang[player] = ang;
-}
-
 //TODO: Implement functionability to not record a player's movement when he's not moving at all or stop the recording entirely
 void PM_Move(struct playermove_s *pMove, qboolean server) {
     if (pMove->dead)
@@ -175,7 +119,7 @@ void PM_Move(struct playermove_s *pMove, qboolean server) {
     if (!g_bRecording[player])
         return;
 
-    //CalculateStrafes(pMove, player);
+    CalculateStrafes(pMove, player);
 
     // Fetch position, velocity, and angles
     vec3_t vel = pMove->velocity;
@@ -215,9 +159,10 @@ void PM_Move(struct playermove_s *pMove, qboolean server) {
 
     // Track old button states
     int old_buttons = pMove->oldbuttons;
+    bool on_ground = pMove->flags & FL_ONGROUND;
 
     // Create FrameData with elapsed time as the timestamp
-    FrameData frame(playerExecutionTime, origin, angles, speed, fps[player] / 4, old_buttons, g_iStrafes[player], g_iSync[player], (pMove->onground == 0), (pMove->gravity == 1.0f));
+    FrameData frame(playerExecutionTime, origin, angles, speed, fps[player] / 4, old_buttons, g_iStrafes[player], g_iSync[player], on_ground, (pMove->gravity == 1.0f));
 
     // Add the frame to the replay data for the player
     g_Replays[player].addFrame(frame);
@@ -292,7 +237,6 @@ static cell AMX_NATIVE_CALL StopRecord(AMX* amx, cell* params)
 
     return 1;
 }
-
 
 // native GetFrame(i, frame[eFrame]);
 static cell AMX_NATIVE_CALL GetFrame(AMX* amx, cell* params)
@@ -429,14 +373,21 @@ AMX_NATIVE_INFO my_natives[] = {
 
 void OnAmxxAttach()
 {
+    g_fwStrafe = 0;
+
     MF_AddNatives(my_natives);
-    // Add the natives from "modtuto.h".
 }
 
 void OnAmxxDetach()
 {
     // This function is necessary, even if you have nothing to declare here. The compiler will throw a linker error otherwise.
     // This can be useful for clearing/destroying a handles system.
+}
+
+void OnPluginsLoaded()
+{   
+    //forward fwPlayerStrafe(id, strafes, sync, strafes[32], strafeLen, frames, goodFrames, Float:gain);
+	g_fwStrafe = MF_RegisterForward("fwPlayerStrafe", ET_STOP, FP_CELL, FP_CELL, FP_CELL, FP_ARRAY, FP_CELL, FP_CELL, FP_CELL, FP_CELL, FP_DONE);
 }
 
 // Changelevel
