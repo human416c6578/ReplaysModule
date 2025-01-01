@@ -68,12 +68,12 @@ void HandleStrafing(PlayerStats &stats, vec3_t ang, vec3_t vel, int buttons) {
 
 	if (speed > stats.oldSpeed) {
 		stats.goodFrames++;
-        if(stats.strafes)
+        if(stats.strafes && stats.strafes < MAX_STRAFES)
 	        stats.strafesGoodFrames[stats.strafes - 1]++;
 	}
 
 	stats.frames++;
-    if(stats.strafes)
+    if(stats.strafes && stats.strafes < MAX_STRAFES)
 	    stats.strafesFrames[stats.strafes - 1]++;
 
 	stats.oldSpeed = speed;

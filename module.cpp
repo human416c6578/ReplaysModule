@@ -109,17 +109,20 @@ static cell AMX_NATIVE_CALL LoadReplay(AMX* amx, cell* params)
     return 1;
 }
 
-//TODO: Implement functionability to not record a player's movement when he's not moving at all or stop the recording entirely
+
 void PM_Move(struct playermove_s *pMove, qboolean server) {
     if (pMove->dead)
         return;
 
+    if(pMove->velocity.x < 1.0 && pMove->velocity.y < 1.0 && pMove->velocity.z < 1.0)
+        return;
+
     int player = pMove->player_index + 1;
+
+    CalculateStrafes(pMove, player);
 
     if (!g_bRecording[player])
         return;
-
-    CalculateStrafes(pMove, player);
 
     // Fetch position, velocity, and angles
     vec3_t vel = pMove->velocity;
