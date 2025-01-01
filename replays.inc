@@ -28,4 +28,6 @@ native GetCurrentReplay();
 native SetCurrentReplay(id);
 native NextReplay();
 native SkipFrames(frames);
-native DeleteReplay(recordId);
+native DeleteReplay(replayId);
+native GetReplaySize();
+native GetReplayOverlap(replayId);

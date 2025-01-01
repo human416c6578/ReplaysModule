@@ -359,6 +359,20 @@ static cell AMX_NATIVE_CALL GetReplaySize(AMX* amx, cell* params)
     return g_BotReplays.at(g_iCurrentReplay).getFrames()->size();
 }
 
+// native GetReplayOverlap(replayId);
+static cell AMX_NATIVE_CALL GetReplayOverlap(AMX* amx, cell* params)
+{
+    if (g_BotReplays.empty())
+        return 0;
+
+    int replayId = params[1];
+    if(replayId < 0 || replayId > g_BotReplays.size())
+        return -1;
+
+    return g_BotReplays.at(replayId).overlap();
+}
+
+
 // Array of native functions to register with AMX Mod X
 AMX_NATIVE_INFO my_natives[] = {
     { "LoadReplay", LoadReplay },
@@ -371,6 +385,7 @@ AMX_NATIVE_INFO my_natives[] = {
     { "NextReplay", NextReplay },
     { "DeleteReplay", DeleteReplay },
     { "GetReplaySize", GetReplaySize},
+    { "GetReplayOverlap", GetReplayOverlap },
     { nullptr, nullptr }  // Array terminator
 };
 
