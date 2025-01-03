@@ -113,9 +113,10 @@ static cell AMX_NATIVE_CALL LoadReplay(AMX* amx, cell* params)
 void PM_Move(struct playermove_s *pMove, qboolean server) {
     if (pMove->dead)
         return;
-
-    if(pMove->velocity.x < 1.0 && pMove->velocity.y < 1.0 && pMove->velocity.z < 1.0)
-        return;
+    // It's bugged somehow, it skips frames randomly pMove->velocity is not accurate
+    // Try to compare origin from previous frame next time
+    //if(pMove->velocity.x < 1.0 && pMove->velocity.y < 1.0 && pMove->velocity.z < 1.0) 
+    //    return;
 
     int player = pMove->player_index + 1;
 
@@ -139,6 +140,8 @@ void PM_Move(struct playermove_s *pMove, qboolean server) {
     uint32_t& playerExecutionTime = timeSinceLastExecution[player];
 
     fpsCounter[player]++;
+    timeSinceLastFpsCount[player] += frametimeMs;
+    playerExecutionTime += frametimeMs;
 
     if (timeSinceLastFpsCount[player] >= 1000) {
         fps[player] = fpsCounter[player];
@@ -146,31 +149,27 @@ void PM_Move(struct playermove_s *pMove, qboolean server) {
         timeSinceLastFpsCount [player]= 0;
     }
 
-    timeSinceLastFpsCount[player] += frametimeMs;
+    if(playerExecutionTime >= targetIntervalMs) {
+        // Convert origin and angles (scaled)
+        int origin[3] = { static_cast<int>(org.x * 4), static_cast<int>(org.y * 4), static_cast<int>(org.z * 4) };
+        int angles[2] = { static_cast<int>(ang.x * 5), static_cast<int>(ang.y * 5) };
 
-    if (playerExecutionTime < targetIntervalMs) {
-        playerExecutionTime += frametimeMs;
-        return;
+        // Calculate speed (magnitude of velocity in the horizontal plane)
+        int speed = static_cast<int>(1.0f / FastInvSqrt(vel.x * vel.x + vel.y * vel.y));
+
+        // Track old button states
+        int old_buttons = pMove->oldbuttons;
+        bool on_ground = pMove->flags & FL_ONGROUND;
+
+        // Create FrameData with elapsed time as the timestamp
+        FrameData frame(playerExecutionTime, origin, angles, speed, fps[player] / 4, old_buttons, g_iStrafes[player], g_iSync[player], on_ground, (pMove->gravity == 1.0f));
+
+        // Add the frame to the replay data for the player
+        g_Replays[player].addFrame(frame);
+
+        playerExecutionTime = 0;
     }
 
-    // Convert origin and angles (scaled)
-    int origin[3] = { static_cast<int>(org.x * 4), static_cast<int>(org.y * 4), static_cast<int>(org.z * 4) };
-    int angles[2] = { static_cast<int>(ang.x * 5), static_cast<int>(ang.y * 5) };
-
-    // Calculate speed (magnitude of velocity in the horizontal plane)
-    int speed = static_cast<int>(1.0f / FastInvSqrt(vel.x * vel.x + vel.y * vel.y));
-
-    // Track old button states
-    int old_buttons = pMove->oldbuttons;
-    bool on_ground = pMove->flags & FL_ONGROUND;
-
-    // Create FrameData with elapsed time as the timestamp
-    FrameData frame(playerExecutionTime, origin, angles, speed, fps[player] / 4, old_buttons, g_iStrafes[player], g_iSync[player], on_ground, (pMove->gravity == 1.0f));
-
-    // Add the frame to the replay data for the player
-    g_Replays[player].addFrame(frame);
-
-    playerExecutionTime = 0;
 }
 
 // native SaveReplay(path[], id, map, authid, category, time);
