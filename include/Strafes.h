@@ -25,6 +25,7 @@ struct PlayerStats {
 PlayerStats g_playerStats[MAX_PLAYERS];
 size_t g_iStrafes[MAX_PLAYERS];
 size_t g_iSync[MAX_PLAYERS];
+bool g_bOnGround[MAX_PLAYERS];
 
 int g_fwStrafe;
 
@@ -88,6 +89,8 @@ void CalculateStrafes(struct playermove_s *pMove, int player) {
 	vec3_t vel = pMove->velocity;
 	int buttons = pMove->oldbuttons;
 	bool onGround = pMove->flags & FL_ONGROUND;
+	
+	g_bOnGround[player] = onGround;
 
 	if (!onGround) { // In Air
 		HandleStrafing(stats, ang, vel, buttons);

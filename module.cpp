@@ -159,15 +159,16 @@ void PM_Move(struct playermove_s *pMove, qboolean server) {
 
         // Track old button states
         int old_buttons = pMove->oldbuttons;
-        bool on_ground = pMove->flags & FL_ONGROUND;
 
         // Create FrameData with elapsed time as the timestamp
-        FrameData frame(playerExecutionTime, origin, angles, speed, fps[player] / 4, old_buttons, g_iStrafes[player], g_iSync[player], on_ground, (pMove->gravity == 1.0f));
+        FrameData frame(playerExecutionTime, origin, angles, speed, fps[player] / 4, old_buttons, g_iStrafes[player], g_iSync[player], g_bOnGround[player], (pMove->gravity == 1.0f));
 
         // Add the frame to the replay data for the player
         g_Replays[player].addFrame(frame);
 
         playerExecutionTime = 0;
+        g_iStrafes[player] = 0;
+        g_iSync[player] = 0;
     }
 
 }
