@@ -404,8 +404,8 @@ void OnAmxxDetach()
 
 void OnPluginsLoaded()
 {   
-    //forward fwPlayerStrafe(id, strafes, sync, strafes[32], strafeLen, frames, goodFrames, Float:gain);
-	g_fwStrafe = MF_RegisterForward("fwPlayerStrafe", ET_STOP, FP_CELL, FP_CELL, FP_CELL, FP_ARRAY, FP_CELL, FP_CELL, FP_CELL, FP_CELL, FP_DONE);
+    //forward fwPlayerStrafe(id, strafes, sync, strafes[32], strafeLen, frames, goodFrames, Float:gain, overlaps);
+	g_fwStrafe = MF_RegisterForward("fwPlayerStrafe", ET_STOP, FP_CELL, FP_CELL, FP_CELL, FP_ARRAY, FP_CELL, FP_CELL, FP_CELL, FP_CELL, FP_CELL, FP_DONE);
 }
 
 // Changelevel

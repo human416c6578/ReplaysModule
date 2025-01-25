@@ -10,6 +10,7 @@ struct PlayerStats {
     float gain = 0;
     int frames = 0;
     int goodFrames = 0;
+	int overlaps = 0;
 
 	// Resets for every strafe
 	int strafesFrames[MAX_STRAFES] = {0}; 
@@ -34,7 +35,8 @@ void ResetJump(PlayerStats &stats) {
 	stats.sync = 0;
 	stats.gain = 0.0;
 	stats.frames = 0;
-	stats.goodFrames = false;
+	stats.goodFrames = 0;
+	stats.overlaps = 0;
 
 	memset(stats.strafesFrames, 0, sizeof(stats.strafesFrames));
 	memset(stats.strafesGoodFrames, 0, sizeof(stats.strafesGoodFrames));
@@ -92,6 +94,9 @@ void CalculateStrafes(struct playermove_s *pMove, int player) {
 	
 	g_bOnGround[player] = onGround;
 
+	if(buttons & IN_MOVERIGHT && buttons & IN_MOVELEFT)
+		stats.overlaps++;
+
 	if (!onGround) { // In Air
 		HandleStrafing(stats, ang, vel, buttons);
 	}
@@ -107,7 +112,7 @@ void CalculateStrafes(struct playermove_s *pMove, int player) {
 		cell cellStrafes = MF_PrepareCellArray(cStrafes, MAX_STRAFES);
         cell cellGain = amx_ftoc(stats.gain);
 		//forward fwPlayerStrafe(id, strafes, sync, strafes[32], strafeLen, frames, goodFrames, Float:gain);
-		MF_ExecuteForward(g_fwStrafe, player, stats.strafes, g_iSync[player], cellStrafes, stats.strafes, stats.frames, stats.goodFrames, cellGain);
+		MF_ExecuteForward(g_fwStrafe, player, stats.strafes, g_iSync[player], cellStrafes, stats.strafes, stats.frames, stats.goodFrames, cellGain, stats.overlaps);
 	}
 
 	stats.wasOnGround = onGround;
