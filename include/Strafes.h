@@ -11,6 +11,7 @@ struct PlayerStats {
     int frames = 0;
     int goodFrames = 0;
 	int overlaps = 0;
+	float mouseMovement = 0.0;
 
 	// Resets for every strafe
 	int strafesFrames[MAX_STRAFES] = {0}; 
@@ -37,6 +38,7 @@ void ResetJump(PlayerStats &stats) {
 	stats.frames = 0;
 	stats.goodFrames = 0;
 	stats.overlaps = 0;
+	stats.mouseMovement = 0.0;
 
 	memset(stats.strafesFrames, 0, sizeof(stats.strafesFrames));
 	memset(stats.strafesGoodFrames, 0, sizeof(stats.strafesGoodFrames));
@@ -53,6 +55,8 @@ void HandleStrafing(PlayerStats &stats, vec3_t ang, vec3_t vel, int buttons) {
 	if (!isTurning){
         return;
     }
+
+	stats.mouseMovement += abs(ang.y - stats.oldAngles.y);
 
     float speed = sqrt(vel.x * vel.x + vel.y * vel.y);
 	stats.gain += (speed - stats.oldSpeed);
@@ -111,8 +115,9 @@ void CalculateStrafes(struct playermove_s *pMove, int player) {
 		}
 		cell cellStrafes = MF_PrepareCellArray(cStrafes, MAX_STRAFES);
         cell cellGain = amx_ftoc(stats.gain);
-		//forward fwPlayerStrafe(id, strafes, sync, strafes[32], strafeLen, frames, goodFrames, Float:gain);
-		MF_ExecuteForward(g_fwStrafe, player, stats.strafes, g_iSync[player], cellStrafes, stats.strafes, stats.frames, stats.goodFrames, cellGain, stats.overlaps);
+		cell cellMouseMovement = amx_ftoc(stats.mouseMovement);
+		//forward fwPlayerStrafe(id, strafes, sync, strafes[32], strafeLen, frames, goodFrames, Float:gain, overlaps, Float:mouseMovement);
+		MF_ExecuteForward(g_fwStrafe, player, stats.strafes, g_iSync[player], cellStrafes, stats.strafes, stats.frames, stats.goodFrames, cellGain, stats.overlaps, cellMouseMovement);
 	}
 
 	stats.wasOnGround = onGround;
